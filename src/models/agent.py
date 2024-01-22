@@ -1,7 +1,8 @@
 import random
 import numpy as np
 from collections import deque
-from models.envirement import Envirement
+from models.model import Linear_QNet,Qtrainer
+import torch
 
 MAX_MEMORY = 100_000
 BATCH_SIZE = 1000
@@ -13,12 +14,14 @@ class Agent:
         self.epsilon=0
         self.gamma=0.9
         self.memory= deque(maxlen=MAX_MEMORY)
+        self.model=Linear_QNet(11,512,3)
+        self.trainer=Qtrainer(self.model,lr=LR,gamma=self.gamma)
 
     def get_state(self,env):
-        point_r=(env.snake.position[0]+20,env.snake.position[1])
-        point_l=(env.snake.position[0]-20,env.snake.position[1])
-        point_u=(env.snake.position[0],env.snake.position[1]-20)
-        point_d=(env.snake.position[0],env.snake.position[1]+20)
+        point_r=(env.snake.snake_position[0]+20,env.snake.snake_position[1])
+        point_l=(env.snake.snake_position[0]-20,env.snake.snake_position[1])
+        point_u=(env.snake.snake_position[0],env.snake.snake_position[1]-20)
+        point_d=(env.snake.snake_position[0],env.snake.snake_position[1]+20)
 
         dir_r= env.direction == "RIGHT"
         dir_l= env.direction == "LEFT"
@@ -46,20 +49,38 @@ class Agent:
             dir_u,
             dir_d,
 
-            (env.apple.position[1]< env.snake.position[1]),
-            (env.apple.position[1]> env.snake.position[1]),
-            (env.apple.position[0]< env.snake.position[0]),
-            (env.apple.position[0]> env.snake.position[0]),
+            (env.apple.position[1]< env.snake.snake_position[1]),
+            (env.apple.position[1]> env.snake.snake_position[1]),
+            (env.apple.position[0]< env.snake.snake_position[0]),
+            (env.apple.position[0]> env.snake.snake_position[0]),
 
 
         ]
         return np.array(state,dtype=int)
         
-    def get_action():
-        pass
-    def rember():
-        pass
-    def train_short_memory():
-        pass
-    def train_long_memory():
-        pass
+    def get_action(self,state):
+        self.epsilon = 80-self.n_games
+        final_move=[0,0,0]
+        if random.randint(0,200) < self.epsilon:
+            move=random.randint(0,2)
+            final_move[move]=1
+        else:
+            state0=torch.tensor(state,dtype=torch.float)
+            prediction=self.model(state0)
+            move=torch.argmax(prediction).item()
+            final_move[move]=1
+        return final_move
+    
+    def rember(self,state,action,reward,next_state,done):
+       self.memory.append((state,action,reward,next_state,done)) 
+    
+    def train_short_memory(self,state,action,reward,next_state,done):
+       self.trainer.train_step(state,action,reward,next_state,done) 
+
+    def train_long_memory(self):
+        if len(self.memory) >BATCH_SIZE:
+            mini_sample=random.sample(self.memory,BATCH_SIZE)
+        else:
+            mini_sample=self.memory
+        states,actions,rewards,next_states,dones=zip(*mini_sample)
+        self.trainer.train_step(states,actions,rewards,next_states,dones)

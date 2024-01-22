@@ -37,7 +37,7 @@ class Snake(pygame.sprite.Sprite):
         self.snake_body.insert(0,list(self.snake_position))
 
     
-    def collision(self,point):
+    def collision(self,point=None):
         if point is None:
             point=self.snake_position
         if point[0] < 0 or point[0] == SCREEN_HEIGHT or point[1] < 0 or point[1] == SCREEN_WIDTH:

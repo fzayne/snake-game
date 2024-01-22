@@ -26,7 +26,3 @@ def game_over(score,game_window):
     time.sleep(2)
      
    
-    pygame.quit()
-     
-    
-    quit()

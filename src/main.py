@@ -10,35 +10,44 @@ from pygame.locals import (
 )
 
 from models.envirement import Envirement
+from models.agent import Agent
+from ploter import plot
 
 pygame.init()
-screen=pygame.display.set_mode((500,500))
 running=True
-
+plot_scores=[]
+plot_mean_score=[]
+total_score=0
+record=0
+agent=Agent()
 env=Envirement()
 env.reset()
 while running:
-    
- 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running= False
-        if event.type == pygame.KEYDOWN:
-            if event.key == K_UP:
-                if env.direction!="DOWN":
-                    env.direction="UP"
-            if event.key == K_DOWN:
-                if env.direction!="UP":
-                    env.direction="DOWN"
-            if event.key == K_RIGHT:
-                if env.direction!="LEFT":
-                    env.direction="RIGHT"
-            if event.key == K_LEFT:
-                if env.direction!="RIGHT":
-                    env.direction="LEFT"
-    env.step()
-    env.updateUI(screen)
+    state_old=agent.get_state(env)
+    final_move=agent.get_action(state_old)
 
+   
+    print(env.step(final_move))
+    reward, done, score= env.step(final_move)
+    env.updateUI()
+    state_new=agent.get_state(env)
+    agent.train_short_memory(state_old, final_move, reward, state_new, done)
+    agent.rember(state_old, final_move, reward, state_new, done)
+    if done:
+        env.reset()
+        agent.n_games+=1
+        agent.train_long_memory()
+
+        if score > record:
+            record=score
+            agent.model.save()
+        plot_scores.append(score)
+        total_score += score
+        plot_mean_score.append((total_score/agent.n_games))
+        plot(plot_scores,plot_mean_score)
     
 
 pygame.quit()
